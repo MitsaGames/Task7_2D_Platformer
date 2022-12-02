@@ -7,11 +7,13 @@ public class KnightMove : MonoBehaviour
 {
     [SerializeField] private float _baseSpeed = 2f;
     [SerializeField] private float _jumpingHorizontalSpeed = 5f;
+    [SerializeField] private float _jumpingForce = 10f;
 
     private Rigidbody2D _rigidbody;
     private Animator _animator;
     private ContactFilter2D _contactFilterGround = default;
     private List<ContactPoint2D> _contacts = new List<ContactPoint2D>();
+    private bool _readyToJump = true;
 
     private void Start()
     {
@@ -25,11 +27,16 @@ public class KnightMove : MonoBehaviour
     private void FixedUpdate()
     {
         bool isWalking = false;
-        bool isGrounded = _rigidbody.GetContacts(_contactFilterGround, _contacts) > 0;
+        bool isGrounded = IsGrounded();
 
         float velocityY = _rigidbody.velocity.y;
         int direction = 0;
         float speed = (isGrounded) ? _baseSpeed : _jumpingHorizontalSpeed;
+
+        if (!isGrounded)
+        {
+            _readyToJump = true;
+        }
 
         if (Input.GetKey(KeyCode.D))
         {
@@ -44,12 +51,28 @@ public class KnightMove : MonoBehaviour
         
         _rigidbody.velocity = new Vector2(speed * direction, velocityY);
 
-        if (isGrounded && Input.GetKey(KeyCode.Space))
+        if (isGrounded && _readyToJump == true && Input.GetKey(KeyCode.Space))
         {
-            _rigidbody.AddForce(Vector2.up * 4.0f, ForceMode2D.Impulse);
+            _rigidbody.AddForce(Vector2.up * _jumpingForce, ForceMode2D.Impulse);
+            _readyToJump = false;
         }
 
         _animator.SetBool(KnightAnimatorController.Params.Walk, isWalking);
         _animator.SetBool(KnightAnimatorController.Params.Jump, !isGrounded);
+    }
+
+    private bool IsGrounded()
+    {
+        _rigidbody.GetContacts(_contactFilterGround, _contacts);
+
+        foreach (var contactPoint in _contacts)
+        {
+            if (contactPoint.otherCollider.GetComponent<GroundDetector>())
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
